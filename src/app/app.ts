@@ -1,7 +1,8 @@
 import { Component, signal } from '@angular/core';
+import { SvgWorkspace } from './features/svg-workspace/svg-workspace';
 
 @Component({
-  imports: [],
+  imports: [SvgWorkspace],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',
