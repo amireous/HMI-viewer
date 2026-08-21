@@ -1,1 +1,25 @@
-<p>device-search works!</p>
+<div class="device-search">
+	<input
+		type="search"
+		[formControl]="searchControl"
+		placeholder="Search devices"
+		aria-label="Search devices"
+	/>
+
+	@if (isLoading()) {
+		<p class="search-status">Loading...</p>
+	}
+
+	@if (searchResults().length > 0) {
+		<ul class="search-results">
+			@for (device of searchResults(); track device.id) {
+				<li>
+					<button type="button" class="result-item" dir="auto" (click)="selectDevice(device)">
+						<span class="result-name" dir="auto">{{ device.name }}</span>
+						<span class="result-code" dir="auto">{{ device.code }}</span>
+					</button>
+				</li>
+			}
+		</ul>
+	}
+</div>

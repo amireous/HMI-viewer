@@ -1,3 +1,4 @@
+import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DeviceSearch } from './device-search';
 
@@ -8,6 +9,7 @@ describe('DeviceSearch', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DeviceSearch],
+      providers: [provideHttpClient()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DeviceSearch);
