@@ -1,59 +1,6 @@
-# I4twinsDashboard
+## SVG Viewer and Floating Modal
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.5.
-
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- **Flow & Functionality:** `SvgWorkspace` loads the plant SVG as text, renders it inline, and handles element selection, highlighting, context-menu label creation, and label deletion. A selected element's attributes and click coordinates are published through the signal-based `SvgStateService`. `FloatingModal` reads that state, lets the user edit attribute values, and applies the changes to the selected SVG element before closing the modal.
+- **Key Decisions & Trade-offs:** `Renderer2` is used for SVG DOM mutations and element creation so updates follow Angular's rendering abstraction instead of relying on direct DOM writes. `getScreenCTM()` transforms browser mouse coordinates into the SVG's local coordinate system, keeping context-menu labels correctly positioned when the SVG is scaled or transformed. The local SVG is inserted as trusted HTML with `DomSanitizer`; this supports an external SVG asset, but requires the asset source to remain trusted and controlled.
+- **Robustness:** Event targets are checked before use, selections are limited to elements contained by the current SVG root, and modal actions verify that a selected element still exists. Missing SVG roots and unavailable transformation matrices exit safely, empty labels are ignored, clicks outside the SVG close the modal, and selected highlights are cleared before a new selection is applied.
+- **AI Usage:** GitHub Copilot was used to help review the existing component and service implementation and draft this concise documentation. The final content was checked against the codebase for accuracy.
