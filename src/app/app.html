@@ -1,5 +1,9 @@
-<app-device-search></app-device-search>
+<button (click)="svgStateService.togglePreviewMode()" style="margin: 10px; padding: 8px 16px; cursor: pointer;">
+  {{ svgStateService.previewMode() ? '🔴 Exit Preview Mode' : '🟢 Enter Preview Mode' }}
+</button>
 
-<app-svg-workspace></app-svg-workspace>
+<div style="display: flex; gap: 20px; padding: 10px;">
+  <app-device-search></app-device-search>
+  <app-svg-workspace style="flex-grow: 1; border: 1px solid #ccc;"></app-svg-workspace>
+</div>
 <app-floating-modal></app-floating-modal>
-

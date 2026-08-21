@@ -6,15 +6,45 @@
   position: relative;
 }
 
+.svg-container {
+  width: 100%;
+  height: 100%;
+}
+
 ::ng-deep .highlighted {
   stroke: #ff007f !important;
-  stroke-width: 4px !important;
-  filter: drop-shadow(0px 0px 4px rgba(255, 0, 127, 0.8));
+  stroke-width: 3px !important;
+  filter: drop-shadow(0px 0px 6px rgba(255, 0, 127, 0.8));
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+}
+
+::ng-deep .highlighted text {
+  stroke: none !important;
+  fill: #ff007f !important;
 }
 
 ::ng-deep svg text {
   user-select: none;
-  font-weight: bold;
 }
+
+::ng-deep [data-status="running"],
+::ng-deep [data-status="running"] * {
+  stroke: #22c55e !important;
+}
+
+::ng-deep [data-status="stopped"],
+::ng-deep [data-status="stopped"] * {
+  stroke: #94a3b8 !important;
+}
+
+::ng-deep [data-status="fault"],
+::ng-deep [data-status="fault"] * {
+  stroke: #ef4444 !important;
+}
+
+::ng-deep [data-status] text {
+  stroke: none !important;
+}
+::ng-deep [data-status="running"] text { fill: #22c55e !important; }
+::ng-deep [data-status="stopped"] text { fill: #94a3b8 !important; }
+::ng-deep [data-status="fault"] text { fill: #ef4444 !important; }

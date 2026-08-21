@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { Device } from '../models/device';
 
 export interface ModalState {
     isOpen: boolean;
@@ -10,7 +11,11 @@ export interface ModalState {
 
 @Injectable({ providedIn: 'root' })
 export class SvgStateService {
-    modalState = signal<ModalState>({
+    readonly selectedDeviceId = signal<string | null>(null);
+    readonly recentSelections = signal<Device[]>([]);
+    readonly previewMode = signal<boolean>(false);
+
+    readonly modalState = signal<ModalState>({
         isOpen: false,
         x: 0,
         y: 0,
@@ -24,5 +29,22 @@ export class SvgStateService {
 
     closeModal() {
         this.modalState.update(s => ({ ...s, isOpen: false, selectedElement: null }));
+    }
+
+    selectDevice(device: Device) {
+        this.selectedDeviceId.set(device.id);
+
+        this.recentSelections.update(current => {
+            const filtered = current.filter(d => d.id !== device.id);
+            return [device, ...filtered].slice(0, 5);
+        });
+    }
+
+    togglePreviewMode() {
+        this.previewMode.update(val => !val);
+
+        if (this.previewMode()) {
+            this.closeModal();
+        }
     }
 }

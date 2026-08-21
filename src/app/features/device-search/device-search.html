@@ -1,25 +1,37 @@
-<div class="device-search">
-	<input
-		type="search"
-		[formControl]="searchControl"
-		placeholder="Search devices"
-		aria-label="Search devices"
-	/>
+<div class="search-container" dir="auto">
+  <input 
+    type="text" 
+    [formControl]="searchControl" 
+    placeholder="Search device by name or code..."
+    class="search-input"
+  />
 
-	@if (isLoading()) {
-		<p class="search-status">Loading...</p>
-	}
+  @if (isLoading()) {
+    <div class="loading">Searching...</div>
+  }
 
-	@if (searchResults().length > 0) {
-		<ul class="search-results">
-			@for (device of searchResults(); track device.id) {
-				<li>
-					<button type="button" class="result-item" dir="auto" (click)="selectDevice(device)">
-						<span class="result-name" dir="auto">{{ device.name }}</span>
-						<span class="result-code" dir="auto">{{ device.code }}</span>
-					</button>
-				</li>
-			}
-		</ul>
-	}
+  @if (searchResults().length > 0) {
+    <ul class="results-list">
+      @for (device of searchResults(); track device.id) {
+        <li (click)="selectDevice(device)" class="result-item">
+          <strong>{{ device.code }}</strong>: {{ device.name }}
+        </li>
+      }
+    </ul>
+  } @else if (searchControl.value.length >= 2 && !isLoading()) {
+    <div class="no-results">No devices found.</div>
+  }
+
+  @if (searchControl.value.length === 0 && svgStateService.recentSelections().length > 0) {
+    <div class="recent-selections">
+      <h4>Recent Selections</h4>
+      <ul class="results-list">
+        @for (device of svgStateService.recentSelections(); track device.id) {
+          <li (click)="selectDevice(device)" class="result-item recent-item">
+            <strong>{{ device.code }}</strong>: {{ device.name }}
+          </li>
+        }
+      </ul>
+    </div>
+  }
 </div>

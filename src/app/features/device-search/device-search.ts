@@ -5,6 +5,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, filter, finalize, of, switchMap, tap } from 'rxjs';
 import { Device } from '../../core/models/device';
 import { ApiService } from '../../core/services/api';
+import { SvgStateService } from '../../core/services/svg-state';
 
 @Component({
   imports: [CommonModule, ReactiveFormsModule],
@@ -21,6 +22,7 @@ export class DeviceSearch {
 
   constructor(
     private readonly apiService: ApiService,
+    protected readonly svgStateService: SvgStateService
   ) {
     this.searchControl.valueChanges
       .pipe(
@@ -45,6 +47,9 @@ export class DeviceSearch {
   }
 
   protected selectDevice(device: Device): void {
-    console.log('Selected device:', device);
+    this.svgStateService.selectDevice(device);
+
+    this.searchControl.setValue('', { emitEvent: false });
+    this.searchResults.set([]);
   }
 }

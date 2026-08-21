@@ -1,8 +1,12 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, ElementRef, HostListener, Renderer2, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, Renderer2, signal, effect, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { interval } from 'rxjs';
+import { startWith, switchMap } from 'rxjs/operators';
 import { SvgStateService } from '../../core/services/svg-state';
- 
+import { ApiService } from '../../core/services/api';
+
 @Component({
   imports: [],
   selector: 'app-svg-workspace',
@@ -12,23 +16,78 @@ import { SvgStateService } from '../../core/services/svg-state';
 export class SvgWorkspace {
   protected readonly svgContent = signal<SafeHtml>('');
   private readonly selectedElements = new Set<SVGElement>();
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor(
     private readonly http: HttpClient,
     private readonly sanitizer: DomSanitizer,
     private readonly renderer: Renderer2,
     private readonly elementRef: ElementRef<HTMLElement>,
-    private readonly svgStateService: SvgStateService
+    private readonly svgStateService: SvgStateService,
+    private readonly apiService: ApiService      
   ) {
     this.http.get('/plant.svg', { responseType: 'text' }).subscribe((svg) => {
       this.svgContent.set(this.sanitizer.bypassSecurityTrustHtml(svg));
+    });
+
+    effect(() => {
+      const selectedId = this.svgStateService.selectedDeviceId();
+      const isPreview = this.svgStateService.previewMode(); 
+      const svgRoot = this.getSvgRoot();
+
+      for (const selectedElement of this.selectedElements) {
+        this.renderer.removeClass(selectedElement, 'highlighted');
+      }
+      this.selectedElements.clear();
+
+      if (!isPreview && selectedId && svgRoot) {
+        const targetElement = svgRoot.querySelector<SVGElement>(`[data-device-id="${selectedId}" i]`);
+
+        if (targetElement) {
+          this.renderer.addClass(targetElement, 'highlighted');
+          this.selectedElements.add(targetElement);
+          targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        } else {
+          console.warn(`Element with ID ${selectedId} not found in the SVG drawing.`);
+        }
+      }
+    });
+
+    effect((onCleanup) => {
+      const isPreview = this.svgStateService.previewMode();
+      const svgRoot = this.getSvgRoot();
+
+      if (isPreview) {
+        const sub = interval(5000).pipe(
+          startWith(0),
+          switchMap(() => this.apiService.searchDevices(''))
+        ).subscribe((devices) => {
+          if (!svgRoot) return;
+
+          devices.forEach(device => {
+            const el = svgRoot.querySelector<SVGElement>(`[data-device-id="${device.id}" i]`);
+            if (el) {
+              this.renderer.setAttribute(el, 'data-status', device.status);
+            }
+          });
+        });
+
+        onCleanup(() => {
+          sub.unsubscribe();
+          if (svgRoot) {
+            const elements = svgRoot.querySelectorAll('[data-status]');
+            elements.forEach(el => this.renderer.removeAttribute(el, 'data-status'));
+          }
+        });
+      }
     });
   }
 
   @HostListener('click', ['$event'])
   protected onSvgClick(event: MouseEvent): void {
+    if (this.svgStateService.previewMode()) return;
     const target = event.target;
-    // console.log('Clicked target:', target);
+
     if (!(target instanceof Element)) {
       this.svgStateService.closeModal();
       return;
@@ -47,7 +106,7 @@ export class SvgWorkspace {
     const svgRoot = this.getSvgRoot();
 
     if (!element || !svgRoot?.contains(element)) {
-      this.svgStateService.closeModal(); 
+      this.svgStateService.closeModal();
       return;
     }
 
@@ -64,8 +123,6 @@ export class SvgWorkspace {
       value: attr.value
     }));
 
-    console.log('---------=============', event, attributesList, element)
-
     this.svgStateService.openModal({
       x: event.clientX,
       y: event.clientY,
@@ -74,64 +131,63 @@ export class SvgWorkspace {
     });
   }
 
-@HostListener('contextmenu', ['$event'])
-protected onSvgContextMenu(event: MouseEvent): void {
-  event.preventDefault();
+  @HostListener('contextmenu', ['$event'])
+  protected onSvgContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    if (this.svgStateService.previewMode()) return;
+    const svgRoot = this.getSvgRoot() as SVGSVGElement;
+    if (!svgRoot) {
+      return;
+    }
 
-  const svgRoot = this.getSvgRoot() as SVGSVGElement;
-  if (!svgRoot) {
-    return;
+    const pt = svgRoot.createSVGPoint();
+    pt.x = event.clientX;
+    pt.y = event.clientY;
+
+    const screenCTM = svgRoot.getScreenCTM();
+    if (!screenCTM) return;
+
+    const cursorPoint = pt.matrixTransform(screenCTM.inverse());
+    const x = cursorPoint.x;
+    const y = cursorPoint.y;
+
+    const label = window.prompt('Enter label text:');
+
+    if (!label) {
+      return;
+    }
+
+    const labelGroup = this.renderer.createElement('g', 'svg');
+    this.renderer.setAttribute(labelGroup, 'data-label-group', '');
+
+    const textElement = this.renderer.createElement('text', 'svg');
+
+    this.renderer.setAttribute(textElement, 'x', `${x}`);
+    this.renderer.setAttribute(textElement, 'y', `${y}`);
+
+    this.renderer.setAttribute(textElement, 'dominant-baseline', 'hanging');
+
+    this.renderer.setAttribute(textElement, 'fill', '#334155');
+    this.renderer.setAttribute(textElement, 'font-size', '14');
+
+    this.renderer.appendChild(textElement, this.renderer.createText(label));
+
+    const deleteButton = this.renderer.createElement('text', 'svg');
+    this.renderer.setAttribute(deleteButton, 'x', `${x + 2 + label.length * 8}`);
+    this.renderer.setAttribute(deleteButton, 'y', `${y}`);
+    this.renderer.setAttribute(deleteButton, 'data-label-delete', '');
+    this.renderer.setAttribute(deleteButton, 'fill', '#b91c1c');
+    this.renderer.setAttribute(deleteButton, 'font-size', '12');
+    this.renderer.setAttribute(deleteButton, 'font-weight', 'bold');
+    this.renderer.setAttribute(deleteButton, 'cursor', 'pointer');
+    this.renderer.appendChild(deleteButton, this.renderer.createText('x'));
+
+    this.renderer.appendChild(labelGroup, textElement);
+    this.renderer.appendChild(labelGroup, deleteButton);
+    this.renderer.appendChild(svgRoot, labelGroup);
   }
-
-  const pt = svgRoot.createSVGPoint();
-  pt.x = event.clientX;
-  pt.y = event.clientY;
-
-  const screenCTM = svgRoot.getScreenCTM();
-  if (!screenCTM) return;
-  
-  const cursorPoint = pt.matrixTransform(screenCTM.inverse());
-  const x = cursorPoint.x;
-  const y = cursorPoint.y;
-
-  const label = window.prompt('Enter label text:');
-
-  if (!label) {
-    return;
-  }
-
-  const labelGroup = this.renderer.createElement('g', 'svg');
-  this.renderer.setAttribute(labelGroup, 'data-label-group', '');
-
-  const textElement = this.renderer.createElement('text', 'svg');
-  
-  this.renderer.setAttribute(textElement, 'x', `${x}`);
-  this.renderer.setAttribute(textElement, 'y', `${y}`);
-  
-  this.renderer.setAttribute(textElement, 'dominant-baseline', 'hanging');
-  
-  this.renderer.setAttribute(textElement, 'fill', '#334155');
-  this.renderer.setAttribute(textElement, 'font-size', '14');
-
-  this.renderer.appendChild(textElement, this.renderer.createText(label));
-
-  const deleteButton = this.renderer.createElement('text', 'svg');
-  this.renderer.setAttribute(deleteButton, 'x', `${x + 2 + label.length * 8}`);
-  this.renderer.setAttribute(deleteButton, 'y', `${y}`);
-  this.renderer.setAttribute(deleteButton, 'data-label-delete', '');
-  this.renderer.setAttribute(deleteButton, 'fill', '#b91c1c');
-  this.renderer.setAttribute(deleteButton, 'font-size', '12');
-  this.renderer.setAttribute(deleteButton, 'font-weight', 'bold');
-  this.renderer.setAttribute(deleteButton, 'cursor', 'pointer');
-  this.renderer.appendChild(deleteButton, this.renderer.createText('x'));
-
-  this.renderer.appendChild(labelGroup, textElement);
-  this.renderer.appendChild(labelGroup, deleteButton);
-  this.renderer.appendChild(svgRoot, labelGroup);
-}
 
   private getSvgRoot(): SVGSVGElement | null {
-    // console.log('Searching for SVG root in:', this.elementRef.nativeElement);
     return this.elementRef.nativeElement.querySelector('svg');
   }
 }
