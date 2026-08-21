@@ -39,7 +39,7 @@ export class SvgWorkspace {
     private readonly apiService: ApiService,
   ) {
     this.http
-      .get('/plant.svg', { responseType: 'text' })
+      .get('./plant.svg', { responseType: 'text' })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .pipe(catchError(() => EMPTY))
       .subscribe((svg) => this.svgContent.set(this.sanitizer.bypassSecurityTrustHtml(svg)));

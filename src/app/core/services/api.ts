@@ -5,7 +5,7 @@ import { Device, RawDevice } from '../models/device';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private readonly devicesUrl = '/devices.json';
+  private readonly devicesUrl = './devices.json';
 
   constructor(private readonly http: HttpClient) {}
 
