@@ -1,17 +1,19 @@
 @if (svgStateService.modalState().isOpen) {
 	<div
+		class="floating-modal"
 		[style.left.px]="svgStateService.modalState().x"
 		[style.top.px]="svgStateService.modalState().y"
-		style="position: fixed; background: white; padding: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);"
 	>
 		@for (attribute of svgStateService.modalState().attributes; track attribute.name) {
-			<label>
+			<label class="attribute-field">
 				{{ attribute.name }}
 				<input [(ngModel)]="attribute.value" />
 			</label>
 		}
 
-		<button type="button" (click)="saveAttributes()">Save</button>
-		<button type="button" (click)="svgStateService.closeModal()">Close</button>
+		<div class="modal-actions">
+			<button class="save-button" type="button" (click)="saveAttributes()">Save</button>
+			<button class="close-button" type="button" (click)="svgStateService.closeModal()">Close</button>
+		</div>
 	</div>
 }

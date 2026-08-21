@@ -30,7 +30,7 @@ export class SvgWorkspace {
     const target = event.target;
     // console.log('Clicked target:', target);
     if (!(target instanceof Element)) {
-      this.svgStateService.closeModal(); // اگر جای نامربوط کلیک شد، مودال بسته شود
+      this.svgStateService.closeModal();
       return;
     }
 
