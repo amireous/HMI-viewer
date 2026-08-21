@@ -28,7 +28,7 @@ export class SvgWorkspace {
   @HostListener('click', ['$event'])
   protected onSvgClick(event: MouseEvent): void {
     const target = event.target;
-    console.log('Clicked target:', target);
+    // console.log('Clicked target:', target);
     if (!(target instanceof Element)) {
       this.svgStateService.closeModal(); // اگر جای نامربوط کلیک شد، مودال بسته شود
       return;
@@ -63,6 +63,8 @@ export class SvgWorkspace {
       name: attr.name,
       value: attr.value
     }));
+
+    console.log('---------=============', event, attributesList, element)
 
     this.svgStateService.openModal({
       x: event.clientX,
@@ -129,7 +131,7 @@ protected onSvgContextMenu(event: MouseEvent): void {
 }
 
   private getSvgRoot(): SVGSVGElement | null {
-    console.log('Searching for SVG root in:', this.elementRef.nativeElement);
+    // console.log('Searching for SVG root in:', this.elementRef.nativeElement);
     return this.elementRef.nativeElement.querySelector('svg');
   }
 }
