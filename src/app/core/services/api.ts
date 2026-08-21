@@ -5,62 +5,72 @@ import { Device, RawDevice } from '../models/device';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-	private readonly devicesUrl = '/devices.json';
-	
-	constructor(private readonly http: HttpClient) { }
+  private readonly devicesUrl = '/devices.json';
 
-	public searchDevices(query: string): Observable<Device[]> {
-		const normalizedQuery = query.toLowerCase();
+  constructor(private readonly http: HttpClient) {}
 
-		return this.http.get<RawDevice[]>(this.devicesUrl).pipe(
-			map((rawDevices) => this.normalizeDevices(rawDevices)),
-			map((devices) =>
-				devices.filter(
-					(device) =>
-						device.name.toLowerCase().includes(normalizedQuery) ||
-						device.code.toLowerCase().includes(normalizedQuery)
-				)
-			),
-			catchError(() => of([]))
-		);
-	}
+  public searchDevices(query: string): Observable<Device[]> {
+    const normalizedQuery = query.toLowerCase();
 
-	private normalizeDevices(rawDevices: RawDevice[]): Device[] {
-		const devicesById = new Map<string, Device>();
+    return this.http.get<RawDevice[]>(this.devicesUrl).pipe(
+      map((rawDevices) => this.normalizeDevices(rawDevices)),
+      map((devices) =>
+        devices.filter(
+          (device) =>
+            device.name.toLowerCase().includes(normalizedQuery) ||
+            device.code.toLowerCase().includes(normalizedQuery),
+        ),
+      ),
+      catchError(() => of([])),
+    );
+  }
 
-		for (const rawDevice of rawDevices) {
-			const id = rawDevice.id?.trim().toLowerCase() || rawDevice.code?.trim().toLowerCase();
-			const code = rawDevice.code?.trim().toLowerCase();
+  private normalizeDevices(rawDevices: RawDevice[]): Device[] {
+    const devicesById = new Map<string, Device>();
 
-			if (!id && !code) {
-				continue;
-			}
+    for (const rawDevice of rawDevices) {
+      const id = this.normalizeValue(rawDevice.id);
+      const code = this.normalizeValue(rawDevice.code);
 
-			devicesById.set(id || code!, {
-				id: id || code!,
-				code: code || 'unknown code',
-				name: rawDevice.name?.trim() || 'Unknown Device',
-				type: rawDevice.type?.trim() || 'Unknown Type',
-				area: rawDevice.area?.trim() || 'Unknown Area',
-				status: this.normalizeStatus(rawDevice.status),
-				lastSeen: rawDevice.lastSeen,
-				vendor: rawDevice.vendor?.trim() || 'Unknown Vendor',
-			});
-		}
+      if (!id && !code) {
+        continue;
+      }
 
-		return Array.from(devicesById.values());
-	}
+      const deviceId = id ?? code;
+      if (!deviceId) {
+        continue;
+      }
 
-	private normalizeStatus(status: string | null): Device['status'] {
-		switch (status?.trim().toLowerCase()) {
-			case 'running':
-				return 'running';
-			case 'stopped':
-				return 'stopped';
-			case 'fault':
-				return 'fault';
-			default:
-				return 'unknown';
-		}
-	}
+      devicesById.set(deviceId, {
+        id: deviceId,
+        code: code || 'unknown code',
+        name: rawDevice.name?.trim() || 'Unknown Device',
+        type: rawDevice.type?.trim() || 'Unknown Type',
+        area: rawDevice.area?.trim() || 'Unknown Area',
+        status: this.normalizeStatus(rawDevice.status),
+        lastSeen: rawDevice.lastSeen,
+        vendor: rawDevice.vendor?.trim() || 'Unknown Vendor',
+      });
+    }
+
+    return Array.from(devicesById.values());
+  }
+
+  private normalizeStatus(status: string | null): Device['status'] {
+    switch (status?.trim().toLowerCase()) {
+      case 'running':
+        return 'running';
+      case 'stopped':
+        return 'stopped';
+      case 'fault':
+        return 'fault';
+      default:
+        return 'unknown';
+    }
+  }
+
+  private normalizeValue(value: string | null): string | null {
+    const normalizedValue = value?.trim().toLowerCase();
+    return normalizedValue || null;
+  }
 }

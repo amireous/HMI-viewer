@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { SvgState } from './svg-state';
+import { SvgStateService } from './svg-state';
 
-describe('SvgState', () => {
-  let service: SvgState;
+describe('SvgStateService', () => {
+  let service: SvgStateService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(SvgState);
+    service = TestBed.inject(SvgStateService);
   });
 
   it('should be created', () => {

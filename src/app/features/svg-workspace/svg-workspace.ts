@@ -1,8 +1,19 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, ElementRef, HostListener, Renderer2, signal, effect, DestroyRef, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  effect,
+  HostListener,
+  inject,
+  Renderer2,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { interval } from 'rxjs';
+import { EMPTY, interval } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { startWith, switchMap } from 'rxjs/operators';
 import { SvgStateService } from '../../core/services/svg-state';
 import { ApiService } from '../../core/services/api';
@@ -12,6 +23,7 @@ import { ApiService } from '../../core/services/api';
   selector: 'app-svg-workspace',
   styleUrl: './svg-workspace.css',
   templateUrl: './svg-workspace.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SvgWorkspace {
   protected readonly svgContent = signal<SafeHtml>('');
@@ -24,15 +36,18 @@ export class SvgWorkspace {
     private readonly renderer: Renderer2,
     private readonly elementRef: ElementRef<HTMLElement>,
     private readonly svgStateService: SvgStateService,
-    private readonly apiService: ApiService      
+    private readonly apiService: ApiService,
   ) {
-    this.http.get('/plant.svg', { responseType: 'text' }).subscribe((svg) => {
-      this.svgContent.set(this.sanitizer.bypassSecurityTrustHtml(svg));
-    });
+    this.http
+      .get('/plant.svg', { responseType: 'text' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(catchError(() => EMPTY))
+      .subscribe((svg) => this.svgContent.set(this.sanitizer.bypassSecurityTrustHtml(svg)));
 
     effect(() => {
       const selectedId = this.svgStateService.selectedDeviceId();
-      const isPreview = this.svgStateService.previewMode(); 
+      const isPreview = this.svgStateService.previewMode();
+      this.svgContent();
       const svgRoot = this.getSvgRoot();
 
       for (const selectedElement of this.selectedElements) {
@@ -41,42 +56,44 @@ export class SvgWorkspace {
       this.selectedElements.clear();
 
       if (!isPreview && selectedId && svgRoot) {
-        const targetElement = svgRoot.querySelector<SVGElement>(`[data-device-id="${selectedId}" i]`);
+        const targetElement = this.findDeviceElement(svgRoot, selectedId);
 
         if (targetElement) {
           this.renderer.addClass(targetElement, 'highlighted');
           this.selectedElements.add(targetElement);
           targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-        } else {
-          console.warn(`Element with ID ${selectedId} not found in the SVG drawing.`);
         }
       }
     });
 
     effect((onCleanup) => {
       const isPreview = this.svgStateService.previewMode();
+      this.svgContent();
       const svgRoot = this.getSvgRoot();
 
       if (isPreview) {
-        const sub = interval(5000).pipe(
-          startWith(0),
-          switchMap(() => this.apiService.searchDevices(''))
-        ).subscribe((devices) => {
-          if (!svgRoot) return;
+        const sub = interval(5000)
+          .pipe(
+            startWith(0),
+            switchMap(() => this.apiService.searchDevices('')),
+            takeUntilDestroyed(this.destroyRef),
+          )
+          .subscribe((devices) => {
+            if (!svgRoot) return;
 
-          devices.forEach(device => {
-            const el = svgRoot.querySelector<SVGElement>(`[data-device-id="${device.id}" i]`);
-            if (el) {
-              this.renderer.setAttribute(el, 'data-status', device.status);
-            }
+            devices.forEach((device) => {
+              const el = this.findDeviceElement(svgRoot, device.id);
+              if (el) {
+                this.renderer.setAttribute(el, 'data-status', device.status);
+              }
+            });
           });
-        });
 
         onCleanup(() => {
           sub.unsubscribe();
           if (svgRoot) {
             const elements = svgRoot.querySelectorAll('[data-status]');
-            elements.forEach(el => this.renderer.removeAttribute(el, 'data-status'));
+            elements.forEach((el) => this.renderer.removeAttribute(el, 'data-status'));
           }
         });
       }
@@ -118,16 +135,16 @@ export class SvgWorkspace {
     this.renderer.addClass(element, 'highlighted');
     this.selectedElements.add(element);
 
-    const attributesList = Array.from(element.attributes).map(attr => ({
+    const attributesList = Array.from(element.attributes).map((attr) => ({
       name: attr.name,
-      value: attr.value
+      value: attr.value,
     }));
 
     this.svgStateService.openModal({
       x: event.clientX,
       y: event.clientY,
       attributes: attributesList,
-      selectedElement: element
+      selectedElement: element,
     });
   }
 
@@ -135,7 +152,7 @@ export class SvgWorkspace {
   protected onSvgContextMenu(event: MouseEvent): void {
     event.preventDefault();
     if (this.svgStateService.previewMode()) return;
-    const svgRoot = this.getSvgRoot() as SVGSVGElement;
+    const svgRoot = this.getSvgRoot();
     if (!svgRoot) {
       return;
     }
@@ -167,8 +184,7 @@ export class SvgWorkspace {
 
     this.renderer.setAttribute(textElement, 'dominant-baseline', 'hanging');
 
-    this.renderer.setAttribute(textElement, 'fill', '#334155');
-    this.renderer.setAttribute(textElement, 'font-size', '14');
+    this.renderer.addClass(textElement, 'svg-label');
 
     this.renderer.appendChild(textElement, this.renderer.createText(label));
 
@@ -176,10 +192,7 @@ export class SvgWorkspace {
     this.renderer.setAttribute(deleteButton, 'x', `${x + 2 + label.length * 8}`);
     this.renderer.setAttribute(deleteButton, 'y', `${y}`);
     this.renderer.setAttribute(deleteButton, 'data-label-delete', '');
-    this.renderer.setAttribute(deleteButton, 'fill', '#b91c1c');
-    this.renderer.setAttribute(deleteButton, 'font-size', '12');
-    this.renderer.setAttribute(deleteButton, 'font-weight', 'bold');
-    this.renderer.setAttribute(deleteButton, 'cursor', 'pointer');
+    this.renderer.addClass(deleteButton, 'svg-label-delete');
     this.renderer.appendChild(deleteButton, this.renderer.createText('x'));
 
     this.renderer.appendChild(labelGroup, textElement);
@@ -189,5 +202,14 @@ export class SvgWorkspace {
 
   private getSvgRoot(): SVGSVGElement | null {
     return this.elementRef.nativeElement.querySelector('svg');
+  }
+
+  private findDeviceElement(svgRoot: SVGSVGElement, deviceId: string): SVGElement | null {
+    const normalizedDeviceId = deviceId.toLowerCase();
+    return (
+      Array.from(svgRoot.querySelectorAll<SVGElement>('[data-device-id]')).find(
+        (element) => element.dataset['deviceId']?.toLowerCase() === normalizedDeviceId,
+      ) ?? null
+    );
   }
 }

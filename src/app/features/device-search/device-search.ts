@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged, filter, finalize, of, switchMap, tap } from 'rxjs';
+import { debounceTime, distinctUntilChanged, finalize, map, of, switchMap } from 'rxjs';
 import { Device } from '../../core/models/device';
 import { ApiService } from '../../core/services/api';
 import { SvgStateService } from '../../core/services/svg-state';
@@ -12,6 +12,7 @@ import { SvgStateService } from '../../core/services/svg-state';
   selector: 'app-device-search',
   styleUrl: './device-search.css',
   templateUrl: './device-search.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeviceSearch {
   protected readonly searchControl = new FormControl('', { nonNullable: true });
@@ -22,26 +23,26 @@ export class DeviceSearch {
 
   constructor(
     private readonly apiService: ApiService,
-    protected readonly svgStateService: SvgStateService
+    protected readonly svgStateService: SvgStateService,
   ) {
     this.searchControl.valueChanges
       .pipe(
         debounceTime(300),
-        tap((query) => {
-          if (query.trim().length < 2) {
-            this.searchResults.set([]);
-            this.isLoading.set(false);
-          }
-        }),
-        filter((query) => query.trim().length >= 2),
+        map((query) => query.trim()),
         distinctUntilChanged(),
         switchMap((query) => {
+          if (query.length < 2) {
+            this.searchResults.set([]);
+            this.isLoading.set(false);
+            return of([] as Device[]);
+          }
+
           this.isLoading.set(true);
-          return this.apiService.searchDevices(query.trim()).pipe(
-            finalize(() => this.isLoading.set(false))
-          );
+          return this.apiService
+            .searchDevices(query)
+            .pipe(finalize(() => this.isLoading.set(false)));
         }),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((devices) => this.searchResults.set(devices));
   }

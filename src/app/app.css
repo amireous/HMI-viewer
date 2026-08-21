@@ -1,0 +1,16 @@
+.preview-toggle {
+  margin: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.dashboard-layout {
+  display: flex;
+  gap: 20px;
+  padding: 10px;
+}
+
+app-svg-workspace {
+  flex: 1 1 auto;
+  border: 1px solid #ccc;
+}

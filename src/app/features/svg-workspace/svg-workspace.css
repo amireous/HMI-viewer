@@ -11,6 +11,18 @@
   height: 100%;
 }
 
+::ng-deep .svg-label {
+  fill: #334155;
+  font-size: 14px;
+}
+
+::ng-deep .svg-label-delete {
+  fill: #b91c1c;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
 ::ng-deep .highlighted {
   stroke: #ff007f !important;
   stroke-width: 3px !important;
@@ -27,24 +39,30 @@
   user-select: none;
 }
 
-::ng-deep [data-status="running"],
-::ng-deep [data-status="running"] * {
+::ng-deep [data-status='running'],
+::ng-deep [data-status='running'] * {
   stroke: #22c55e !important;
 }
 
-::ng-deep [data-status="stopped"],
-::ng-deep [data-status="stopped"] * {
+::ng-deep [data-status='stopped'],
+::ng-deep [data-status='stopped'] * {
   stroke: #94a3b8 !important;
 }
 
-::ng-deep [data-status="fault"],
-::ng-deep [data-status="fault"] * {
+::ng-deep [data-status='fault'],
+::ng-deep [data-status='fault'] * {
   stroke: #ef4444 !important;
 }
 
 ::ng-deep [data-status] text {
   stroke: none !important;
 }
-::ng-deep [data-status="running"] text { fill: #22c55e !important; }
-::ng-deep [data-status="stopped"] text { fill: #94a3b8 !important; }
-::ng-deep [data-status="fault"] text { fill: #ef4444 !important; }
+::ng-deep [data-status='running'] text {
+  fill: #22c55e !important;
+}
+::ng-deep [data-status='stopped'] text {
+  fill: #94a3b8 !important;
+}
+::ng-deep [data-status='fault'] text {
+  fill: #ef4444 !important;
+}
